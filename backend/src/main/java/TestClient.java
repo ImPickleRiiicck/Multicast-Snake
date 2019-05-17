@@ -1,14 +1,15 @@
+import com.csc445.shared.game.Spot;
+import com.csc445.shared.packets.PlayPacket;
 import com.csc445.shared.utils.AES;
 import com.csc445.shared.utils.Constants;
 
 import java.io.IOException;
 import java.net.*;
 import java.security.InvalidKeyException;
-import java.util.Arrays;
 
 public class TestClient {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InvalidKeyException {
         System.setProperty("java.net.preferIPv4Stack", "true"); // This is needed because OSX seems to return an IPv6 address and it does not work with IPv6 for some reason
         final MulticastSocket socket = new MulticastSocket(Constants.GROUP_PORT);
         final InetAddress group = InetAddress.getByName(Constants.GROUP_ADDRESS);
@@ -20,49 +21,11 @@ public class TestClient {
 
         String secretKey = AES.TEST_PASSWORD;
 
-//        new Thread(() -> {
-//            while (true) {
-//                try {
-//                    Thread.sleep(2000);
-//                    byte[] hBuf = new byte[1];
-//                    hBuf[0] = 3;
-//
-//                    socket.send(new DatagramPacket(hBuf, hBuf.length, server, Constants.SERVER_PORT));
-//                } catch (InterruptedException | IOException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }).start();
-
-        final String name = "Test";
-
-        byte[] buf = new byte[name.length() + 1];
-
-        buf[0] = 1;
-
-        for (int i = 0; i < name.length(); i++) {
-            buf[i + 1] = name.getBytes()[i];
-        }
-
-        try {
-            buf = AES.encryptByteArray(buf, buf.length, secretKey);
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        }
-
-        socket.send(new DatagramPacket(buf, buf.length, server, Constants.SERVER_PORT));
-        while (true) {
-            final byte[] rBuf = new byte[Constants.PACKET_SIZE];
-            final DatagramPacket receivedPacket = new DatagramPacket(rBuf, rBuf.length);
-            socket.receive(receivedPacket);
-            byte[] data = Arrays.copyOfRange(receivedPacket.getData(), 0, receivedPacket.getLength());
-            try {
-                data = AES.decryptByteArray(data, data.length, secretKey);
-                System.out.println(new String(data, 1, data.length - 1));
-            } catch (InvalidKeyException e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
-        }
+        final Spot s = new Spot(1, 2);
+        s.setName("Landon");
+        final PlayPacket playPacket = new PlayPacket(s, (short) 738);
+        final byte[] buf = playPacket.createPacket();
+        final byte[] encrypt = AES.encryptByteArray(buf, buf.length, secretKey);
+        socket.send(new DatagramPacket(encrypt, encrypt.length, server, Constants.SERVER_PORT));
     }
 }

@@ -107,30 +107,11 @@ public class MulticastThread implements Runnable {
 
         final PlayPacket p = new PlayPacket();
         p.parseSocketData(packet);
+        p.setSequenceNumber((short) currentPlayNumber);
         addPlay(p);
         game.updateSpot(p.getSpot());
 
-
         sendPacket(p.createPacket(), group, Constants.GROUP_PORT);
-    }
-
-    /**
-     * Function to process a HeartbeatPacket from a client.  The Heartbeat Packet is used to tell if a user is still
-     * connected to the game.  The client sends the Heartbeat Packet at certain intervals.  When it is received, it
-     * updates the game that they are still able to send and receive packets for the game.  If they are not properly
-     * connected and send a Heartbeat packet, an {@link com.csc445.shared.packets.ErrorPacket} is sent, notifying
-     * them that they need to connect properly.
-     *
-     * @param packet Datagram packet from client
-     */
-    private void processHeartbeatPacket(DatagramPacket packet) {
-        System.out.println("Heartbeat packet");
-
-        final boolean heartbeatUpdated = game.updatePlayerHeartbeat(packet.getAddress());
-
-        if (!heartbeatUpdated) {
-            sendErrorPacket("User is not properly connected.  Please exit and try again to authenticate.", packet.getAddress(), packet.getPort());
-        }
     }
 
     /**
@@ -241,9 +222,6 @@ public class MulticastThread implements Runnable {
                             break;
                         case 2: // Play packet
                             processPlayPacket(receivedPacket);
-                            break;
-                        case 3: // Heartbeat packet
-                            processHeartbeatPacket(receivedPacket);
                             break;
                         case 6: // State request packet
                             processStateRequestPacket(receivedPacket);

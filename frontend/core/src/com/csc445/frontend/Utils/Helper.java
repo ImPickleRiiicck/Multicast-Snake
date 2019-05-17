@@ -4,9 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.csc445.frontend.Stage.GameStage;
 import com.csc445.shared.game.Spot;
-import com.csc445.shared.packets.ErrorPacket;
-import com.csc445.shared.packets.MessagePacket;
-import com.csc445.shared.packets.PlayPacket;
+import com.csc445.shared.packets.*;
 import com.csc445.shared.utils.AES;
 import com.csc445.shared.utils.Constants;
 
@@ -15,6 +13,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.security.InvalidKeyException;
+import java.util.Stack;
 
 public class Helper {
 
@@ -24,6 +23,11 @@ public class Helper {
     private static byte selectedColorByte = 7; // black
 
     private static MulticastSocket socket;
+
+    private static boolean bufferingPlays;
+    private static short currentPlayNumber = 0;
+    private static short latestPacketReceived = 0;
+    private static Stack<PlayPacket> bufferedPlays = new Stack<>();
 
     static {
         try {
@@ -103,7 +107,67 @@ public class Helper {
 
         final PlayPacket p = new PlayPacket();
         p.parseSocketData(packet);
-        final Spot spot = p.getSpot();
+
+        if (!bufferingPlays) {
+            if (checkIfSequentialPlay(currentPlayNumber, p.getSequenceNumber())) {
+                currentPlayNumber++;
+                final Spot spot = p.getSpot();
+                updateGameState(stage, spot);
+            } else {
+                latestPacketReceived = p.getSequenceNumber();
+                bufferingPlays = true;
+                bufferedPlays.push(p);
+
+                requestMissedPlays();
+            }
+        } else {
+            final boolean correctPacket = processMissedPlays(p);
+            if (correctPacket) {
+                currentPlayNumber++;
+            }
+
+            if (checkIfDoneBufferingPlays()) {
+                bufferingPlays = false;
+                latestPacketReceived = 0;
+                addBufferedPlays(stage);
+            } else {
+                requestMissedPlays();
+            }
+
+        }
+    }
+
+    private static boolean checkIfDoneBufferingPlays() {
+        return latestPacketReceived == currentPlayNumber;
+    }
+
+    private static boolean checkIfSequentialPlay(short currentPlayNumber, short playNumberReceived) {
+        return (playNumberReceived - currentPlayNumber) == 1;
+    }
+
+    private static void requestMissedPlays() {
+        final StateRequestPacket s = new StateRequestPacket((short) (currentPlayNumber + 1));
+        sendPacket(s.createPacket(), State.getServerName(), Constants.SERVER_PORT);
+    }
+
+    private static boolean processMissedPlays(PlayPacket p) {
+        if (checkIfSequentialPlay(currentPlayNumber, p.getSequenceNumber())) {
+            bufferedPlays.push(p);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void addBufferedPlays(GameStage stage) {
+        while (!bufferedPlays.empty()) {
+            final PlayPacket p = bufferedPlays.pop();
+            updateGameState(stage, p.getSpot());
+        }
+    }
+
+    private static void updateGameState(GameStage stage, Spot spot) {
         Gdx.app.postRunnable(() -> stage.updatePixel(spot.getX(), spot.getY(), spot.getColor(), spot.getName()));
         updateTextArea(stage, spot.getName() + " played " + Helper.convertByteToColor(spot.getColor()) + " at X: " + spot.getX() + ", Y: " + spot.getY());
     }
