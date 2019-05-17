@@ -28,4 +28,8 @@ public class MessagePacket extends Packet {
             addData(b);
         }
     }
+
+    public String getMessage() {
+        return message;
+    }
 }

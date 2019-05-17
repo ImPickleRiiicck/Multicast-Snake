@@ -28,4 +28,8 @@ public class ErrorPacket extends Packet {
             addData(b);
         }
     }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
 }

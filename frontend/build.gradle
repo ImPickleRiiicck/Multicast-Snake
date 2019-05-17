@@ -40,8 +40,6 @@ project(":frontend:core") {
     dependencies {
         compile "com.badlogicgames.gdx:gdx:$gdxVersion"
 
-        compile ('io.socket:socket.io-client:1.0.0')
-
         compile project(':shared')
     }
 }

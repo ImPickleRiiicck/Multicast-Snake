@@ -15,21 +15,8 @@ public class Game {
     private final Spot[][] spots = new Spot[WIDTH][HEIGHT];
     private final List<Player> playersList = new ArrayList<>();
 
-    private boolean hasGameStarted;
-
     public Game() {
         initializeSpaces();
-
-        new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(10000);
-                    sweepPlayers();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
     }
 
     /**
@@ -50,7 +37,7 @@ public class Game {
      * @param newPlayer Player to check for their existence
      * @return true if they exist, false if they do not exist
      */
-    private synchronized boolean playerIsInGame(Player newPlayer) {
+    private boolean playerIsInGame(Player newPlayer) {
         for (Player p : playersList) {
             if (p.getAddress().equals(newPlayer.getAddress())) {
                 return true;
@@ -69,7 +56,7 @@ public class Game {
      * @param newPlayer Player to add to the game
      * @return true if they are added, false if they are not added
      */
-    public synchronized boolean addPlayerToGame(Player newPlayer) {
+    public boolean addPlayerToGame(Player newPlayer) {
         if (!playerIsInGame(newPlayer)) {
             playersList.add(newPlayer);
             System.out.println(newPlayer.getName() + " has connected.");
@@ -86,7 +73,7 @@ public class Game {
      * @param address Address of the player that has sent a heartbeat
      * @return true if they exist, false if they do not exist
      */
-    public synchronized boolean updatePlayerHeartbeat(InetAddress address) {
+    public boolean updatePlayerHeartbeat(InetAddress address) {
         for (Player p : playersList) {
             if (p.getAddress().equals(address)) {
                 p.setHasHeartbeat(true);
@@ -100,45 +87,16 @@ public class Game {
     }
 
     /**
-     * Function to sweep stale players from the game.
-     */
-    public synchronized List<String> sweepPlayers() {
-        final List<String> removedPlayers = new ArrayList<>();
-
-        Iterator<Player> playerIterator = playersList.iterator();
-        while (playerIterator.hasNext()) {
-            final Player player = playerIterator.next();
-            if (player.hasHeartbeat()) {
-                player.setHasHeartbeat(false);
-            } else {
-                System.out.println(player.getName() + " has disconnected.");
-                removedPlayers.add(player.getName());
-                playerIterator.remove();
-            }
-        }
-
-        return removedPlayers;
-    }
-
-    /**
      * Function to update a spot in the server game state with the new data that has come in from a particular player.
      *
      * @param spotToUpdate Spot to update with new data
      */
-    public synchronized void updateSpot(Spot spotToUpdate) {
+    public void updateSpot(Spot spotToUpdate) {
         final Spot spot = spots[spotToUpdate.getX()][spotToUpdate.getY()];
 
         spot.setName(spotToUpdate.getName());
         spot.setColor(spotToUpdate.getColor());
 
         System.out.println("Spot (" + spot.getX() + "," + spot.getY() + ") updated - Name: " + spot.getName() + " | Color: " + spot.getColor());
-    }
-
-    public boolean isHasGameStarted() {
-        return hasGameStarted;
-    }
-
-    public void setHasGameStarted(boolean hasGameStarted) {
-        this.hasGameStarted = hasGameStarted;
     }
 }

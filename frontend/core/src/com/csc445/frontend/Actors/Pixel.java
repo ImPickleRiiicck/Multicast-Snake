@@ -3,6 +3,7 @@ package com.csc445.frontend.Actors;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextTooltip;
+import com.badlogic.gdx.graphics.Color;
 import com.csc445.frontend.Utils.Helper;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
@@ -11,33 +12,36 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
-import org.w3c.dom.Text;
-
-import javax.swing.*;
+import com.csc445.frontend.Utils.State;
+import com.csc445.shared.game.Spot;
+import com.csc445.shared.packets.PlayPacket;
+import com.csc445.shared.utils.Constants;
 
 public class Pixel extends Actor {
 
-    private Pixmap pixmap;
-    private final Vector2 gridPos;
     private final Vector2 canvasPos;
     private final int size;
     private TextTooltip toolTip;
+    private Skin toolTipSkin;
     private Texture t;
-    private String id;
-    private final Skin skin = new Skin(Gdx.files.internal("skins/whitefont/uiskin.json"));
 
+    private int x;
+    private int y;
+
+    private String userName;
 
     /**
      * @param gridPos   the pixel's actual grid position
      * @param canvasPos the pixel's position on the canvas
      * @param size      the size of the pixel
      */
-    public Pixel(Vector2 gridPos, Vector2 canvasPos, int size) {
-        this.gridPos = gridPos;
+    public Pixel(Vector2 gridPos, Vector2 canvasPos, int size, Skin toolTipSkin) {
+        this.x = (int) gridPos.x;
+        this.y = (int) gridPos.y;
         this.canvasPos = canvasPos;
         this.size = size;
-        id = gridPos.x + " : " + gridPos.y;
-        createPixmap();
+        this.toolTipSkin = toolTipSkin;
+        setColor(new Color(1, 1, 1, 1));
         setBounds(canvasPos.x, canvasPos.y, size, size);
         setListener();
     }
@@ -48,24 +52,21 @@ public class Pixel extends Actor {
     private void setListener() {
         addListener(new InputListener() {
             @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                Helper.getSocket().emit("pixelChanged", Helper.getSelectedColor());
-                pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
-                pixmap.setColor(Helper.getSelectedColor());
-                pixmap.fillRectangle(0, 0, size, size);
-                t = new Texture(pixmap);
-                pixmap.dispose();
+            public boolean touchDown(InputEvent event, float dontAccessX, float dontAccessY, int pointer, int button) {
+                final Spot spot = new Spot(x, y);
+                spot.setName(State.getUserName());
+                spot.setColor(Helper.getSelectedColorByte());
+
+                final PlayPacket playPacket = new PlayPacket(spot);
+                Helper.sendPacket(playPacket.createPacket(), State.getServerName(), Constants.SERVER_PORT);
+
+                setColor(Helper.getSelectedColor());
+                setUserName(State.getUserName());
                 return true;
             }
 
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                System.out.println(id);
-            }
-
-            public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                System.out.println(id);
-                toolTip = new TextTooltip(id, skin);
+            public void enter(InputEvent event, float dontAccessX, float dontAccessXY, int pointer, Actor fromActor) {
+                toolTip = new TextTooltip(x + ", " + y, toolTipSkin);
                 event.getTarget().addListener(toolTip);
                 toolTip.setInstant(true);
 
@@ -79,17 +80,6 @@ public class Pixel extends Actor {
     }
 
     /**
-     * Creates a pixmap to be piped into a texture to create a filled rectangle
-     */
-    private void createPixmap() {
-        pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
-        setColor();
-        pixmap.fillRectangle(0, 0, size, size);
-        t = new Texture(pixmap);
-        pixmap.dispose();
-    }
-
-    /**
      * @param batch       batch
      * @param parentAlpha parentAlpha
      */
@@ -100,9 +90,22 @@ public class Pixel extends Actor {
     }
 
     /**
-     * Generates a random color for the pixel
+     * Generates a white pixel
      */
-    private void setColor() {
-        pixmap.setColor(1, 1, 1, 1);
+    @Override
+    public void setColor(Color color) {
+        final Pixmap pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
+        pixmap.setColor(color);
+        pixmap.fillRectangle(0, 0, size, size);
+        t = new Texture(pixmap);
+        pixmap.dispose();
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 }

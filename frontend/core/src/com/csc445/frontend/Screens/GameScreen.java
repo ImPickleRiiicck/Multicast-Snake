@@ -1,5 +1,6 @@
 package com.csc445.frontend.Screens;
 
+import com.badlogic.gdx.Game;
 import com.csc445.frontend.Stage.GameStage;
 import com.csc445.frontend.Utils.Helper;
 import com.badlogic.gdx.Gdx;
@@ -13,7 +14,6 @@ public class GameScreen implements Screen {
 
     public GameScreen() {
         this.gameStage = new GameStage(new ScreenViewport());
-        Helper.getSocket().connect();
     }
 
     @Override
@@ -34,7 +34,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void resize(int width, int height) {
-
     }
 
     @Override
